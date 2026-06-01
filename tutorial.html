@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PacketLens — Tutorial</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #0f1217;
+    --card: #141820;
+    --border: #1e2530;
+    --red: #e63946;
+    --red-dim: #7c1d23;
+    --cyan: #00d4ff;
+    --cyan-dim: #004d5e;
+    --green: #39d353;
+    --green-dim: #0d3318;
+    --yellow: #f4c542;
+    --text: #c9d1d9;
+    --text-dim: #586069;
+    --mono: 'Share Tech Mono', monospace;
+    --sans: 'Barlow', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-weight: 300;
+    line-height: 1.7;
+    cursor: crosshair;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.07) 2px,
+      rgba(0,0,0,0.07) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* Animated grid background */
+  .grid-bg {
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: gridDrift 20s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes gridDrift {
+    0% { background-position: 0 0; }
+    100% { background-position: 40px 40px; }
+  }
+
+  /* Hero */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 60px 20px;
+    overflow: hidden;
+  }
+
+  .hero::after {
+    content: '';
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(ellipse, rgba(230,57,70,0.08) 0%, transparent 70%);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .hero-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--red);
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.2s forwards;
+  }
+
+  .hero h1 {
+    font-family: var(--mono);
+    font-size: clamp(48px, 8vw, 96px);
+    font-weight: 400;
+    letter-spacing: -2px;
+    line-height: 1;
+    color: #fff;
+    margin-bottom: 8px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.4s forwards;
+  }
+
+  .hero h1 span { color: var(--red); }
+
+  .hero-sub {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--cyan);
+    margin-bottom: 32px;
+    letter-spacing: 1px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.6s forwards;
+  }
+
+  .hero-desc {
+    max-width: 520px;
+    font-size: 16px;
+    color: var(--text-dim);
+    margin-bottom: 48px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.8s forwards;
+  }
+
+  .badge-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 1s forwards;
+  }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 14px;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+  .badge.red { border-color: var(--red-dim); color: var(--red); }
+  .badge.cyan { border-color: var(--cyan-dim); color: var(--cyan); }
+  .badge.green { border-color: var(--green-dim); color: var(--green); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Scroll indicator */
+  .scroll-hint {
+    position: absolute;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 3px;
+    animation: bounce 2s ease infinite;
+  }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(6px); }
+  }
+
+  /* Content */
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px 100px;
+    position: relative;
+  }
+
+  /* Section */
+  .section {
+    margin-bottom: 72px;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .section.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .section-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--red);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .section h2 {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 400;
+    color: #fff;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+  }
+
+  /* Step cards */
+  .step {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
+    padding: 24px 28px;
+    margin-bottom: 16px;
+    position: relative;
+    transition: border-color 0.2s;
+  }
+
+  .step:hover {
+    border-color: var(--red);
+    border-left-color: var(--cyan);
+  }
+
+  .step-num {
+    position: absolute;
+    top: -1px;
+    right: 20px;
+    font-family: var(--mono);
+    font-size: 48px;
+    font-weight: 400;
+    color: var(--border);
+    line-height: 1;
+  }
+
+  .step h3 {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--cyan);
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .step p {
+    font-size: 15px;
+    color: var(--text);
+    margin-bottom: 14px;
+  }
+
+  /* Code blocks */
+  .code-block {
+    background: #06080b;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--green);
+    padding: 16px 20px;
+    margin: 12px 0;
+    position: relative;
+    overflow-x: auto;
+  }
+
+  .code-block pre {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--green);
+    line-height: 1.8;
+    white-space: pre;
+  }
+
+  .code-block .prompt { color: var(--red); }
+  .code-block .comment { color: var(--text-dim); }
+  .code-block .flag { color: var(--yellow); }
+  .code-block .value { color: var(--cyan); }
+
+  .copy-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    background: var(--border);
+    border: none;
+    padding: 4px 10px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: color 0.2s, background 0.2s;
+  }
+
+  .copy-btn:hover { color: var(--cyan); background: var(--cyan-dim); }
+
+  /* Flags table */
+  .flags-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 13px;
+    margin-top: 16px;
+  }
+
+  .flags-table th {
+    text-align: left;
+    padding: 10px 16px;
+    background: var(--card);
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    font-size: 10px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .flags-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  .flags-table tr:hover td { background: var(--card); }
+
+  .flag-name { color: var(--yellow); }
+  .flag-desc { color: var(--text); font-family: var(--sans); font-size: 14px; }
+  .flag-example { color: var(--cyan); }
+
+  /* Alert box */
+  .alert-box {
+    background: rgba(230,57,70,0.06);
+    border: 1px solid var(--red-dim);
+    padding: 16px 20px;
+    margin: 20px 0;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--red);
+  }
+
+  .alert-box strong { display: block; margin-bottom: 6px; letter-spacing: 1px; }
+
+  /* Info box */
+  .info-box {
+    background: rgba(0,212,255,0.04);
+    border: 1px solid var(--cyan-dim);
+    padding: 16px 20px;
+    margin: 20px 0;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .info-box strong { color: var(--cyan); display: block; margin-bottom: 6px; font-family: var(--mono); font-size: 11px; letter-spacing: 2px; }
+
+  /* Feature grid */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-top: 24px;
+  }
+
+  .feature-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 20px;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .feature-card:hover {
+    border-color: var(--red);
+    transform: translateY(-2px);
+  }
+
+  .feature-icon {
+    font-size: 22px;
+    margin-bottom: 10px;
+  }
+
+  .feature-card h4 {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--cyan);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .feature-card p {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    padding: 40px 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Blink cursor */
+  .cursor {
+    display: inline-block;
+    width: 10px;
+    height: 16px;
+    background: var(--red);
+    vertical-align: middle;
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-tag">Kali Linux · Network Security · Python</div>
+  <h1>Packet<span>Lens</span></h1>
+  <div class="hero-sub">// Live Network Traffic Analyzer <span class="cursor"></span></div>
+  <p class="hero-desc">
+    A real-time CLI tool that captures, analyzes, and flags suspicious network activity.
+    Built for penetration testers and security researchers.
+  </p>
+  <div class="badge-row">
+    <span class="badge red">root required</span>
+    <span class="badge cyan">python 3.8+</span>
+    <span class="badge green">scapy · rich</span>
+    <span class="badge">kali linux</span>
+  </div>
+  <div class="scroll-hint">▼ scroll to install ▼</div>
+</section>
+
+<!-- CONTENT -->
+<div class="container">
+
+  <!-- Features -->
+  <div class="section" id="s0">
+    <div class="section-num">// overview</div>
+    <h2>What It Does</h2>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">📡</div>
+        <h4>Live Capture</h4>
+        <p>Sniffs packets in real-time on any interface — eth0, wlan0, lo, or custom.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h4>Protocol Stats</h4>
+        <p>Breaks down TCP, UDP, ICMP, ARP, DNS, and HTTP packet counts and rates.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔥</div>
+        <h4>Top Talkers</h4>
+        <p>Identifies the most active IP pairs and most-hit ports in real time.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🚨</div>
+        <h4>Alert Engine</h4>
+        <p>Detects port scans (15+ ports from one IP) and ARP spoofing attacks live.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💾</div>
+        <h4>Export</h4>
+        <p>Save full capture sessions to JSON or CSV for offline analysis.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🎛️</div>
+        <h4>BPF Filters</h4>
+        <p>Use standard Wireshark-style filters to focus on specific traffic.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 1: Install deps -->
+  <div class="section" id="s1">
+    <div class="section-num">// step 01</div>
+    <h2>Install Dependencies</h2>
+
+    <div class="alert-box">
+      <strong>⚠ ROOT REQUIRED</strong>
+      Raw packet sniffing requires root. Always run with <code>sudo</code>.
+    </div>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3>Update Kali & install pip</h3>
+      <p>Make sure your system is up to date first.</p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+        <pre><span class="prompt">$</span> sudo apt update && sudo apt upgrade -y
+<span class="prompt">$</span> sudo apt install python3-pip -y</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3>Install Python packages</h3>
+      <p>Two packages needed: <strong>scapy</strong> (packet engine) and <strong>rich</strong> (terminal UI).</p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+        <pre><span class="prompt">$</span> sudo pip3 install scapy rich --break-system-packages</pre>
+      </div>
+      <p>Or use the included requirements file:</p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+        <pre><span class="prompt">$</span> sudo pip3 install -r requirements.txt --break-system-packages</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <h3>Make executable (optional)</h3>
+      <p>So you can run it directly without typing <code>python3</code> every time.</p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+        <pre><span class="prompt">$</span> chmod +x packetlens.py
+<span class="prompt">$</span> sudo ./packetlens.py <span class="comment"># run directly</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Basic usage -->
+  <div class="section" id="s2">
+    <div class="section-num">// step 02</div>
+    <h2>Basic Usage</h2>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3>Find your network interface</h3>
+      <p>You need to know which interface to listen on before starting.</p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+        <pre><span class="prompt">$</span> ip a              <span class="comment"># list all interfaces</span>
+<span class="prompt">$</span> iwconfig          <span class="comment"># wireless interfaces only</span></pre>
+      </div>
+      <div class="info-box">
+        <strong>// common interfaces</strong>
+        <strong>eth0</strong> → wired Ethernet &nbsp;|&nbsp; <strong>wlan0</strong> → Wi-Fi &nbsp;|&nbsp; <strong>lo</strong> → loopback &nbsp;|&nbsp; <strong>tun0</strong> → VPN
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3>Run with live dashboard (default)</h3>
+      <p>Auto-detects the default interface and shows the full live UI.</p>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+        <pre><span class="prompt">$</span> sudo python3 packetlens.py</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <h3>Specify an interface</h3>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+        <pre><span class="prompt">$</span> sudo python3 packetlens.py <span class="flag">-i</span> <span class="value">eth0</span>
+<span class="prompt">$</span> sudo python3 packetlens.py <span class="flag">-i</span> <span class="value">wlan0</span></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <h3>Stop the capture</h3>
+      <p>Press <strong>Ctrl+C</strong> — PacketLens will print a session summary before exiting.</p>
+    </div>
+  </div>
+
+  <!-- Step 3: All flags -->
+  <div class="section" id="s3">
+    <div class="section-num">// step 03</div>
+    <h2>All Flags & Options</h2>
+
+    <table class="flags-table">
+      <thead>
+        <tr>
+          <th>Flag</th>
+          <th>Description</th>
+          <th>Example</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="flag-name">-i / --iface</td>
+          <td class="flag-desc">Network interface to sniff on</td>
+          <td class="flag-example">-i eth0</td>
+        </tr>
+        <tr>
+          <td class="flag-name">-f / --filter</td>
+          <td class="flag-desc">BPF packet filter expression</td>
+          <td class="flag-example">-f "tcp port 80"</td>
+        </tr>
+        <tr>
+          <td class="flag-name">-c / --count</td>
+          <td class="flag-desc">Stop after N packets (0 = unlimited)</td>
+          <td class="flag-example">-c 500</td>
+        </tr>
+        <tr>
+          <td class="flag-name">-t / --timeout</td>
+          <td class="flag-desc">Stop after N seconds (0 = unlimited)</td>
+          <td class="flag-example">-t 60</td>
+        </tr>
+        <tr>
+          <td class="flag-name">--export</td>
+          <td class="flag-desc">Export format: json or csv</td>
+          <td class="flag-example">--export json</td>
+        </tr>
+        <tr>
+          <td class="flag-name">--out</td>
+          <td class="flag-desc">Output filename (no extension)</td>
+          <td class="flag-example">--out my_capture</td>
+        </tr>
+        <tr>
+          <td class="flag-name">--no-ui</td>
+          <td class="flag-desc">Disable live dashboard (plain output)</td>
+          <td class="flag-example">--no-ui</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Step 4: Examples -->
+  <div class="section" id="s4">
+    <div class="section-num">// step 04</div>
+    <h2>Real-World Examples</h2>
+
+    <div class="step">
+      <h3>Monitor HTTP traffic only</h3>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+        <pre><span class="prompt">$</span> sudo python3 packetlens.py <span class="flag">-i</span> <span class="value">eth0</span> <span class="flag">-f</span> <span class="value">"tcp port 80"</span></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <h3>Watch DNS queries for 30 seconds</h3>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+        <pre><span class="prompt">$</span> sudo python3 packetlens.py <span class="flag">-f</span> <span class="value">"udp port 53"</span> <span class="flag">-t</span> <span class="value">30</span></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <h3>Capture 1000 packets and export to JSON</h3>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+        <pre><span class="prompt">$</span> sudo python3 packetlens.py <span class="flag">-c</span> <span class="value">1000</span> <span class="flag">--export</span> <span class="value">json</span> <span class="flag">--out</span> <span class="value">recon_session</span></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <h3>Monitor traffic from a specific host</h3>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+        <pre><span class="prompt">$</span> sudo python3 packetlens.py <span class="flag">-f</span> <span class="value">"host 192.168.1.50"</span></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <h3>ARP monitoring (detect spoofing on LAN)</h3>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+        <pre><span class="prompt">$</span> sudo python3 packetlens.py <span class="flag">-f</span> <span class="value">"arp"</span> <span class="flag">-i</span> <span class="value">eth0</span></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <h3>Headless mode (pipe or log to file)</h3>
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+        <pre><span class="prompt">$</span> sudo python3 packetlens.py <span class="flag">--no-ui</span> <span class="flag">-t</span> <span class="value">120</span> <span class="flag">--export</span> <span class="value">csv</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 5: Alerts -->
+  <div class="section" id="s5">
+    <div class="section-num">// step 05</div>
+    <h2>Understanding Alerts</h2>
+
+    <div class="step">
+      <h3>Port Scan Detection</h3>
+      <p>PacketLens tracks destination ports per source IP. If a single host hits more than <strong>15 unique ports</strong>, it raises an alert:</p>
+      <div class="code-block">
+        <pre><span class="prompt">⚠</span>  <span class="flag">[PORT SCAN]</span> <span class="value">192.168.1.42</span> scanned <span class="cyan">23</span> ports</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <h3>ARP Spoof Detection</h3>
+      <p>PacketLens builds an ARP table. If an IP's MAC address changes unexpectedly in a reply, it raises:</p>
+      <div class="code-block">
+        <pre><span class="prompt">⚠</span>  <span class="flag">[ARP SPOOF]</span> IP <span class="value">192.168.1.1</span> changed MAC: <span class="cyan">aa:bb:cc → 11:22:33</span></pre>
+      </div>
+      <div class="info-box">
+        <strong>// tip</strong>
+        ARP spoof alerts are a strong indicator of a man-in-the-middle attack on your local network.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  PACKETLENS v1.0 &nbsp;·&nbsp; FOR AUTHORIZED USE ONLY &nbsp;·&nbsp; KALI LINUX
+</footer>
+
+<script>
+  // Intersection observer for section animations
+  const sections = document.querySelectorAll('.section');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) e.target.classList.add('visible');
+    });
+  }, { threshold: 0.1 });
+  sections.forEach(s => observer.observe(s));
+
+  // Copy button
+  function copyCode(btn) {
+    const pre = btn.nextElementSibling;
+    const text = pre.innerText
+      .replace(/^\$ /gm, '')
+      .replace(/^# .*/gm, '')
+      .trim();
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = 'COPIED';
+      btn.style.color = 'var(--green)';
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.style.color = '';
+      }, 1500);
+    });
+  }
+</script>
+</body>
+</html>
